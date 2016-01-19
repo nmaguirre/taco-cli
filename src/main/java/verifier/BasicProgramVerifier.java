@@ -1,5 +1,7 @@
 package verifier;
 
+import java.io.PrintWriter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 
@@ -146,10 +148,27 @@ public class BasicProgramVerifier {
 		}
 		
 		if (result.get_alloy_analysis_result().isSAT()) {
-			System.out.println("Verification failed: Program does not satisfy its contract in the following situation:");
-			System.out.println(getCounterexample());
+			try {
+				PrintWriter writer = new PrintWriter("verification-result.txt", "UTF-8");
+				writer.println("VERIFICATION FAILED: Program does not satisfy its contract in the following situation:");
+				writer.println(getCounterexample());
+				writer.close();
+			}
+			catch (Exception e) {
+				System.out.println("An error has occurred building the verification output.");
+			}
 		}
-		else System.out.println("Verification succeeded");
+		else { 
+			try {
+				PrintWriter writer = new PrintWriter("verification-result.txt", "UTF-8");
+				System.out.println("VERIFICATION SUCCEEDED: No errors found.");
+				writer.close();
+			}
+			catch (Exception e) {
+				System.out.println("An error has occurred building the verification output.");
+			}
+
+		}
 		return result.get_alloy_analysis_result().isUNSAT();
 	}
 	
@@ -167,8 +186,16 @@ public class BasicProgramVerifier {
 		RecoveredInformation recoveredInformation = snapshotStage.getRecoveredInformation();
 		
 		String counterexample = "";
+		// first print thiz, if subject method not static
+		if (recoveredInformation.getSnapshot().containsKey("thiz_0")) {
+			counterexample += "this = " + Dumper.dump(recoveredInformation.getSnapshot().get("thiz_0"), 5, 5, null)+"\n";
+		}
+
+		// then print the method arguments and static fields
 		for (String k: recoveredInformation.getSnapshot().keySet()) {
-			counterexample += k + " = " + recoveredInformation.getSnapshot().get(k) + "; ";
+			if (k!="thiz_0") {
+				counterexample += k.substring(0, k.lastIndexOf("_")) + " = " + recoveredInformation.getSnapshot().get(k) + "\n";
+			}
 		}
 		return counterexample;
 		
